@@ -29,7 +29,18 @@
 // The inline functions below rely heavily on constant propagation.
 #define inline inline __attribute__((always_inline))
 
-#define mod32(fp) (1 + (fp) % UINT32_MAX)
+// 1 + fp % UINT32_MAX
+static inline uint32_t mod32(uint64_t fp)
+{
+    uint32_t lo = fp;
+    uint32_t hi = fp >> 32;
+    lo += 1;
+    if (unlikely(lo == 0))
+	lo = 1;
+    lo += hi;
+    lo += (lo < hi);
+    return lo;
+}
 
 // Fingerprint to indices.
 // Note that the two buckets are completely symmetrical with regard to xor,
