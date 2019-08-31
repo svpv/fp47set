@@ -107,7 +107,7 @@
 #define e_i2       e_hi
 #define r_i2       r_hi
 
-.macro hasBegin
+.macro hasBegin_re0st0
     #ifndef __i386__
 	mov      q_fp,q_hi
 	shr      $32,q_hi
@@ -123,24 +123,54 @@
 	mov      m_bb(r_ptr),r_ptr
 .endm
 
-.macro hasRet
+.macro hasRet_re0st0
 	ret
 .endm
 
-#define NAME(name) fp47set_##name##sse2
+.macro hasBegin_re0st1
+    #ifndef __i386__
+	mov      q_fp,q_hi
+	shr      $32,q_hi
+    #endif
+	add      $1,e_hi
+	adc      e_lo,e_hi
+	adc      $0,e_hi
+	cmp      0+m_stash(r_ptr),e_hi
+	je       91f
+	movd     e_hi,%xmm0
+	xor      e_lo,e_hi
+	and      m_mask0(r_ptr),e_i1
+	and      m_mask0(r_ptr),e_i2
+    90:
+	pshufd   $0,%xmm0,%xmm0
+	mov      m_bb(r_ptr),r_ptr
+.endm
 
-FUNC(has2re0st0)
-	hasBegin
+.macro hasRet_re0st1
+	ret
+    91:
+	movd     e_hi,%xmm0
+	xor      e_lo,e_hi
+	and      m_mask0(r_ptr),e_i1
+	and      m_mask0(r_ptr),e_i2
+	cmp      4+m_stash(r_ptr),e_i1
+	je       99f
+	cmp      4+m_stash(r_ptr),e_i2
+	jne      90b
+    99:
+	mov      $1,%eax
+	ret
+.endm
+
+.macro hasBody2
 	movq     (r_ptr,r_i1,8),%xmm1
 	movq     (r_ptr,r_i2,8),%xmm2
 	punpcklqdq %xmm2,%xmm1
 	pcmpeqd  %xmm0,%xmm1
 	pmovmskb %xmm1,%eax
-	hasRet
-ENDF(has2re0st0)
+.endm
 
-FUNC(has3re0st0)
-	hasBegin
+.macro hasBody3
 	shl      $2,r_i1
 	shl      $2,r_i2
 	movdqu   (r_ptr,r_i1,2),%xmm1
@@ -150,11 +180,9 @@ FUNC(has3re0st0)
 	packssdw %xmm2,%xmm1
 	pmovmskb %xmm1,%eax
 	and      $0x3f3f,%eax
-	hasRet
-ENDF(has3re0st0)
+.endm
 
-FUNC(has4re0st0)
-	hasBegin
+.macro hasBody4
 	shl      $4,r_i1
 	shl      $4,r_i2
 	movdqa   (r_ptr,r_i1,1),%xmm1
@@ -162,5 +190,42 @@ FUNC(has4re0st0)
 	pcmpeqd  (r_ptr,r_i2,1),%xmm0
 	packssdw %xmm0,%xmm1
 	pmovmskb %xmm1,%eax
-	hasRet
+.endm
+
+#define NAME(name) fp47set_##name##sse2
+
+FUNC(has2re0st0)
+	hasBegin_re0st0
+	hasBody2
+	hasRet_re0st0
+ENDF(has2re0st0)
+
+FUNC(has2re0st1)
+	hasBegin_re0st1
+	hasBody2
+	hasRet_re0st1
+ENDF(has2re0st1)
+
+FUNC(has3re0st0)
+	hasBegin_re0st0
+	hasBody3
+	hasRet_re0st0
 ENDF(has3re0st0)
+
+FUNC(has3re0st1)
+	hasBegin_re0st1
+	hasBody3
+	hasRet_re0st1
+ENDF(has3re0st1)
+
+FUNC(has4re0st0)
+	hasBegin_re0st0
+	hasBody4
+	hasRet_re0st0
+ENDF(has3re0st0)
+
+FUNC(has4re0st1)
+	hasBegin_re0st1
+	hasBody4
+	hasRet_re0st1
+ENDF(has3re0st1)
