@@ -21,7 +21,7 @@ static inline uint64_t rnd(void)
 }
 
 // Add random elements in a loop, until the structure resizes.
-void addUniq(struct fp47set *set, size_t *np, uint64_t *tp)
+void addUniq(struct fp47set *set, size_t *np, uint64_t *tp, bool alt)
 {
     size_t n = 0;
     uint64_t state0 = rndState;
@@ -30,6 +30,8 @@ void addUniq(struct fp47set *set, size_t *np, uint64_t *tp)
     uint64_t t1 = t0;
     while (1) {
 	rnd1 = rnd();
+	if (rnd1 & alt)
+	    rnd1 = rnd();
 	int rc = fp47set_add(set, rnd1);
 	assert(rc > 0);
 	// Not including the resize cost.
@@ -38,14 +40,20 @@ void addUniq(struct fp47set *set, size_t *np, uint64_t *tp)
 	n++;
 	t1 = __rdtsc();
     }
+    *tp = t1 - t0;
+    *np = n;
     // Recheck with fp47set_has().
     rndState = state0;
+    size_t fpc = 0; // false positive count
     do {
 	rnd2 = rnd();
+	if (rnd2 & alt) {
+	    fpc += fp47set_has(set, rnd2);
+	    rnd2 = rnd();
+	}
 	assert(fp47set_has(set, rnd2));
     } while (rnd2 != rnd1);
-    *np = n;
-    *tp = t1 - t0;
+    assert(fpc < 2);
 }
 
 // From MurmurHash3.
@@ -86,6 +94,7 @@ static int ITER = 23;
 
 double bench_addUniq(int bsize, int logsize, double *fill)
 {
+    bool alt = false;
     size_t nn = 0;
     size_t n = 0; uint64_t t = 0;
     for (int i = 0; i < (1<<ITER); i++) {
@@ -93,7 +102,7 @@ double bench_addUniq(int bsize, int logsize, double *fill)
 	size_t n1 = 0; uint64_t t1 = 0;
 	// Skip the stages preceding bsize.
 	for (int i = 2; i <= bsize; i++)
-	    addUniq(set, &n1, &t1), nn += n1;
+	    addUniq(set, &n1, &t1, alt), nn += n1;
 	n += n1, t += t1;
 	fp47set_free(set);
     }
@@ -121,19 +130,39 @@ double bench_addDups(int bsize, int logsize)
 
 double bench_has(int bsize, int logsize)
 {
+    bool alt = true;
     size_t n = 0; uint64_t t = 0;
     struct fp47set *set = fp47set_new(logsize);
-    // has() is branchless, so in fact the contents do not matter.
-    // Only add some to switch to the right bsize.
-    for (int i = 2; i < bsize; i++)
-	addUniq(set, &n, &t);
-    n = 1 << (logsize + ITER);
+    uint64_t state0 = rndState;
+    // For bsize > 2, add until we reach bsize.
+    if (bsize > 2) {
+	for (int i = 2; i < bsize; i++)
+	    addUniq(set, &n, &t, alt);
+	assert(set->cnt >= (1<<logsize));
+    }
+    // With bsize=2, fill to 50%.
+    else {
+	for (size_t i = 0; i < (1<<logsize); i++) {
+	    uint64_t rnd1 = rnd();
+	    if (rnd1 & alt)
+		rnd1 = rnd();
+	    fp47set_add(set, rnd1);
+	}
+	assert(set->bsize == 2);
+    }
+    n = 0;
     t = __rdtsc();
-    size_t dummy = 0;
-    for (size_t i = 0; i < n; i++)
-	dummy += fp47set_has(set, rnd());
+    for (int i = 0; i < (1<<ITER); i++) {
+	size_t cnt = 0;
+	size_t setcnt = set->cnt;
+	rndState = state0;
+	while (cnt < setcnt) {
+	    cnt += fp47set_has(set, rnd());
+	    n++;
+	}
+    }
     t = __rdtsc() - t;
-    return (double) (t + dummy % 2) / n;
+    return (double) t / n;
 }
 
 int main(int argc, char **argv)
