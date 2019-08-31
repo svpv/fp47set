@@ -47,7 +47,7 @@ static inline uint32_t mod32(uint64_t fp)
 // i.e. the information about "the first and true" index is not preserved.
 // This looses about 1 bit out of 32+logsize bits of hashing material.
 #define dFP2I					\
-    uint32_t i1 = fp;				\
+    uint32_t i1 = fp >> 32;			\
     uint32_t fptag = mod32(fp);			\
     uint32_t i2 = i1 ^ fptag;			\
     i1 &= set->mask0;				\

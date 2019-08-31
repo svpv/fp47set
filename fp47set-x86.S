@@ -60,63 +60,54 @@
 #endif
 
 #if MSFASTCALL
-#define r_lo       %ecx
-#define r_hi       %edx
+#define r_i2       %ecx
+#define r_i1       %edx
 #define r_ptr      %eax
 #endif
 
 #if REGPARM3
-#define r_lo       %eax
-#define r_hi       %edx
+#define r_i2       %eax
+#define r_i1       %edx
 #define r_ptr      %ecx
 #endif
 
 #ifdef __i386__
-#define e_lo       r_lo
-#define e_hi       r_hi
+#define e_i1       r_i1
+#define e_i2       r_i2
 
 #elif MS64ABI
-#define q_fp       %rcx
 #define r_ptr      %rdx
-#define q_lo       %rcx
-#define r_lo       %rcx
-#define q_hi       %r11
-#define r_hi       %r11
+#define q_i1       %rcx
+#define r_i1       %rcx
+#define r_i2       %r11
 
 #else // System V ABI
-#define q_fp       %rdi
-#define q_lo       %rdi
-#define q_hi       %r11
-#define e_lo       %edi
-#define e_hi       %r11d
+#define q_i1       %rdi
+#define e_i1       %edi
+#define e_i2       %r11d
 
 #ifdef __ILP32__
 #define r_ptr      %esi
-#define r_lo       %edi
-#define r_hi       %r11d
+#define r_i1       %edi
+#define r_i2       %r11d
 #else
 #define r_ptr      %rsi
-#define r_lo       %rdi
-#define r_hi       %r11
+#define r_i1       %rdi
+#define r_i2       %r11
 #endif
 
 #endif // System V ABI
 
-#define e_i1       e_lo
-#define r_i1       r_lo
-#define e_i2       e_hi
-#define r_i2       r_hi
-
 .macro hasBegin_re0st0
     #ifndef __i386__
-	mov      q_fp,q_hi
-	shr      $32,q_hi
+	mov      e_i1,e_i2
+	shr      $32,q_i1
     #endif
-	add      $1,e_hi
-	adc      e_lo,e_hi
-	adc      $0,e_hi
-	movd     e_hi,%xmm0
-	xor      e_lo,e_hi
+	add      $1,e_i2
+	adc      e_i1,e_i2
+	adc      $0,e_i2
+	movd     e_i2,%xmm0
+	xor      e_i1,e_i2
 	pshufd   $0,%xmm0,%xmm0
 	and      m_mask0(r_ptr),e_i1
 	and      m_mask0(r_ptr),e_i2
@@ -129,16 +120,16 @@
 
 .macro hasBegin_re0st1
     #ifndef __i386__
-	mov      q_fp,q_hi
-	shr      $32,q_hi
+	mov      e_i1,e_i2
+	shr      $32,q_i1
     #endif
-	add      $1,e_hi
-	adc      e_lo,e_hi
-	adc      $0,e_hi
-	cmp      0+m_stash(r_ptr),e_hi
+	add      $1,e_i2
+	adc      e_i1,e_i2
+	adc      $0,e_i2
+	cmp      0+m_stash(r_ptr),e_i2
 	je       91f
-	movd     e_hi,%xmm0
-	xor      e_lo,e_hi
+	movd     e_i2,%xmm0
+	xor      e_i1,e_i2
 	and      m_mask0(r_ptr),e_i1
 	and      m_mask0(r_ptr),e_i2
     90:
@@ -149,8 +140,8 @@
 .macro hasRet_re0st1
 	ret
     91:
-	movd     e_hi,%xmm0
-	xor      e_lo,e_hi
+	movd     e_i2,%xmm0
+	xor      e_i1,e_i2
 	and      m_mask0(r_ptr),e_i1
 	and      m_mask0(r_ptr),e_i2
 	cmp      4+m_stash(r_ptr),e_i1
@@ -164,20 +155,20 @@
 
 .macro hasBegin_re0st2
     #ifndef __i386__
-	mov      q_fp,q_hi
-	shr      $32,q_hi
+	mov      e_i1,e_i2
+	shr      $32,q_i1
     #endif
-	add      $1,e_hi
-	adc      e_lo,e_hi
-	adc      $0,e_hi
-	movd     e_hi,%xmm0
-	cmp      0+m_stash(r_ptr),e_hi
+	add      $1,e_i2
+	adc      e_i1,e_i2
+	adc      $0,e_i2
+	movd     e_i2,%xmm0
+	cmp      0+m_stash(r_ptr),e_i2
 	je       93f
     90:
-	cmp      8+m_stash(r_ptr),e_hi
+	cmp      8+m_stash(r_ptr),e_i2
 	je       95f
     91:
-	xor      e_lo,e_hi
+	xor      e_i1,e_i2
 	and      m_mask0(r_ptr),e_i1
 	and      m_mask0(r_ptr),e_i2
     92:
@@ -188,17 +179,17 @@
 .macro hasRet_re0st2
 	ret
     93:
-	xor      e_lo,e_hi
+	xor      e_i1,e_i2
 	and      m_mask0(r_ptr),e_i1
 	and      m_mask0(r_ptr),e_i2
 	cmp      4+m_stash(r_ptr),e_i1
 	je       99f
 	cmp      4+m_stash(r_ptr),e_i2
 	je       99f
-	movd     %xmm0,e_hi
-	cmp      8+m_stash(r_ptr),e_hi
+	movd     %xmm0,e_i2
+	cmp      8+m_stash(r_ptr),e_i2
 	jne      94f
-	xor      e_lo,e_hi
+	xor      e_i1,e_i2
 	and      m_mask0(r_ptr),e_i2
 	cmp      12+m_stash(r_ptr),e_i1
 	je       99f
@@ -206,11 +197,11 @@
 	je       99f
 	jmp      92b
     94:
-	xor      e_lo,e_hi
+	xor      e_i1,e_i2
 	and      m_mask0(r_ptr),e_i2
 	jmp      92b
     95:
-	xor      e_lo,e_hi
+	xor      e_i1,e_i2
 	and      m_mask0(r_ptr),e_i1
 	and      m_mask0(r_ptr),e_i2
 	cmp      12+m_stash(r_ptr),e_i1
