@@ -162,6 +162,66 @@
 	ret
 .endm
 
+.macro hasBegin_re0st2
+    #ifndef __i386__
+	mov      q_fp,q_hi
+	shr      $32,q_hi
+    #endif
+	add      $1,e_hi
+	adc      e_lo,e_hi
+	adc      $0,e_hi
+	movd     e_hi,%xmm0
+	cmp      0+m_stash(r_ptr),e_hi
+	je       93f
+    90:
+	cmp      8+m_stash(r_ptr),e_hi
+	je       95f
+    91:
+	xor      e_lo,e_hi
+	and      m_mask0(r_ptr),e_i1
+	and      m_mask0(r_ptr),e_i2
+    92:
+	pshufd   $0,%xmm0,%xmm0
+	mov      m_bb(r_ptr),r_ptr
+.endm
+
+.macro hasRet_re0st2
+	ret
+    93:
+	xor      e_lo,e_hi
+	and      m_mask0(r_ptr),e_i1
+	and      m_mask0(r_ptr),e_i2
+	cmp      4+m_stash(r_ptr),e_i1
+	je       99f
+	cmp      4+m_stash(r_ptr),e_i2
+	je       99f
+	movd     %xmm0,e_hi
+	cmp      8+m_stash(r_ptr),e_hi
+	jne      94f
+	xor      e_lo,e_hi
+	and      m_mask0(r_ptr),e_i2
+	cmp      12+m_stash(r_ptr),e_i1
+	je       99f
+	cmp      12+m_stash(r_ptr),e_i2
+	je       99f
+	jmp      92b
+    94:
+	xor      e_lo,e_hi
+	and      m_mask0(r_ptr),e_i2
+	jmp      92b
+    95:
+	xor      e_lo,e_hi
+	and      m_mask0(r_ptr),e_i1
+	and      m_mask0(r_ptr),e_i2
+	cmp      12+m_stash(r_ptr),e_i1
+	je       99f
+	cmp      12+m_stash(r_ptr),e_i2
+	jne      90b
+    99:
+	mov      $1,%eax
+	ret
+.endm
+
 .macro hasBody2
 	movq     (r_ptr,r_i1,8),%xmm1
 	movq     (r_ptr,r_i2,8),%xmm2
@@ -206,6 +266,12 @@ FUNC(has2re0st1)
 	hasRet_re0st1
 ENDF(has2re0st1)
 
+FUNC(has2re0st2)
+	hasBegin_re0st2
+	hasBody2
+	hasRet_re0st2
+ENDF(has2re0st2)
+
 FUNC(has3re0st0)
 	hasBegin_re0st0
 	hasBody3
@@ -218,6 +284,12 @@ FUNC(has3re0st1)
 	hasRet_re0st1
 ENDF(has3re0st1)
 
+FUNC(has3re0st2)
+	hasBegin_re0st2
+	hasBody3
+	hasRet_re0st2
+ENDF(has3re0st2)
+
 FUNC(has4re0st0)
 	hasBegin_re0st0
 	hasBody4
@@ -229,3 +301,9 @@ FUNC(has4re0st1)
 	hasBody4
 	hasRet_re0st1
 ENDF(has3re0st1)
+
+FUNC(has4re0st2)
+	hasBegin_re0st2
+	hasBody4
+	hasRet_re0st2
+ENDF(has3re0st2)
