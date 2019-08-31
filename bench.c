@@ -4,7 +4,7 @@
 #include <string.h>
 #include <assert.h>
 #include <x86intrin.h>
-#include "fp64set.h"
+#include "fp47set.h"
 
 static inline uint64_t rotr64(uint64_t x, int r)
 {
@@ -21,7 +21,7 @@ static inline uint64_t rnd(void)
 }
 
 // Add random elements in a loop, until the structure resizes.
-void addUniq(struct fp64set *set, size_t *np, uint64_t *tp)
+void addUniq(struct fp47set *set, size_t *np, uint64_t *tp)
 {
     size_t n = 0;
     uint64_t state0 = rndState;
@@ -30,7 +30,7 @@ void addUniq(struct fp64set *set, size_t *np, uint64_t *tp)
     uint64_t t1 = t0;
     while (1) {
 	rnd1 = rnd();
-	int rc = fp64set_add(set, rnd1);
+	int rc = fp47set_add(set, rnd1);
 	assert(rc > 0);
 	// Not including the resize cost.
 	if (rc > 1)
@@ -38,11 +38,11 @@ void addUniq(struct fp64set *set, size_t *np, uint64_t *tp)
 	n++;
 	t1 = __rdtsc();
     }
-    // Recheck with fp64set_has().
+    // Recheck with fp47set_has().
     rndState = state0;
     do {
 	rnd2 = rnd();
-	assert(fp64set_has(set, rnd2));
+	assert(fp47set_has(set, rnd2));
     } while (rnd2 != rnd1);
     *np = n;
     *tp = t1 - t0;
@@ -64,14 +64,14 @@ static inline uint64_t fmix64(uint64_t x)
 // function, fmix64, comes to rescue.  All its operations are reversible,
 // so we've got a bijection from the set of small numbers to the uniformly
 // distributed subset of the 64-bit universe.
-void addDups(struct fp64set *set, uint64_t mask, size_t *np, uint64_t *tp)
+void addDups(struct fp47set *set, uint64_t mask, size_t *np, uint64_t *tp)
 {
     size_t n = 0;
     uint64_t t0 = __rdtsc();
     uint64_t t1 = t0;
     while (1) {
 	uint64_t fp = fmix64(rnd() & mask);
-	int rc = fp64set_add(set, fp);
+	int rc = fp47set_add(set, fp);
 	assert(rc >= 0);
 	if (rc > 1)
 	    break;
@@ -89,13 +89,13 @@ double bench_addUniq(int bsize, int logsize, double *fill)
     size_t nn = 0;
     size_t n = 0; uint64_t t = 0;
     for (int i = 0; i < (1<<ITER); i++) {
-	struct fp64set *set = fp64set_new(logsize);
+	struct fp47set *set = fp47set_new(logsize);
 	size_t n1 = 0; uint64_t t1 = 0;
 	// Skip the stages preceding bsize.
 	for (int i = 2; i <= bsize; i++)
 	    addUniq(set, &n1, &t1), nn += n1;
 	n += n1, t += t1;
-	fp64set_free(set);
+	fp47set_free(set);
     }
     *fill = 100.0 * nn / (bsize << (logsize + ITER));
     return (double) t / n;
@@ -105,7 +105,7 @@ double bench_addDups(int bsize, int logsize)
 {
     size_t n = 0; uint64_t t = 0;
     for (int i = 0; i < (1<<ITER); i++) {
-	struct fp64set *set = fp64set_new(logsize);
+	struct fp47set *set = fp47set_new(logsize);
 	size_t n1 = 0; uint64_t t1 = 0;
 	// If the structure has 2^b slots, use b-bit random numbers.
 	// This will produce as many dups as possible without looping
@@ -114,7 +114,7 @@ double bench_addDups(int bsize, int logsize)
 	for (int i = 2; i <= bsize; i++)
 	    addDups(set, mask, &n1, &t1);
 	n += n1, t += t1;
-	fp64set_free(set);
+	fp47set_free(set);
     }
     return (double) t / n;
 }
@@ -122,7 +122,7 @@ double bench_addDups(int bsize, int logsize)
 double bench_has(int bsize, int logsize)
 {
     size_t n = 0; uint64_t t = 0;
-    struct fp64set *set = fp64set_new(logsize);
+    struct fp47set *set = fp47set_new(logsize);
     // has() is branchless, so in fact the contents do not matter.
     // Only add some to switch to the right bsize.
     for (int i = 2; i < bsize; i++)
@@ -131,7 +131,7 @@ double bench_has(int bsize, int logsize)
     t = __rdtsc();
     size_t dummy = 0;
     for (size_t i = 0; i < n; i++)
-	dummy += fp64set_has(set, rnd());
+	dummy += fp47set_has(set, rnd());
     t = __rdtsc() - t;
     return (double) (t + dummy % 2) / n;
 }
