@@ -222,10 +222,10 @@
 .endm
 
 .macro hasBody3
-	shl      $2,r_i1
-	shl      $2,r_i2
-	movdqu   (r_ptr,r_i1,2),%xmm1
-	movdqu   (r_ptr,r_i2,2),%xmm2
+	lea      (r_i1,r_i1,2),r_i1
+	lea      (r_i2,r_i2,2),r_i2
+	movdqu   (r_ptr,r_i1,4),%xmm1
+	movdqu   (r_ptr,r_i2,4),%xmm2
 	pcmpeqd  %xmm0,%xmm1
 	pcmpeqd  %xmm0,%xmm2
 	packssdw %xmm2,%xmm1
