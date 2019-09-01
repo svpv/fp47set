@@ -228,9 +228,9 @@
 	movdqu   (r_ptr,r_i2,4),%xmm2
 	pcmpeqd  %xmm0,%xmm1
 	pcmpeqd  %xmm0,%xmm2
-	packssdw %xmm2,%xmm1
+	por      %xmm2,%xmm1
 	pmovmskb %xmm1,%eax
-	and      $0x3f3f,%eax
+	and      $0xfff,%eax
 .endm
 
 .macro hasBody4
@@ -239,7 +239,7 @@
 	movdqa   (r_ptr,r_i1,1),%xmm1
 	pcmpeqd  %xmm0,%xmm1
 	pcmpeqd  (r_ptr,r_i2,1),%xmm0
-	packssdw %xmm0,%xmm1
+	por      %xmm0,%xmm1
 	pmovmskb %xmm1,%eax
 .endm
 
